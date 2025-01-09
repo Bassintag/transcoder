@@ -19,7 +19,7 @@ const ffmpegArgs = "" +
 	"-c:a aac -ac 2 -b:a 128k " +
 	"-c:s mov_text"
 
-func ffmpeg(task Task, onUpdate func()) error {
+func ffmpeg(task *Task, onUpdate func()) error {
 	args := []string{"-i", task.Path}
 	args = append(args, strings.Split(ffmpegArgs, " ")...)
 	args = append(args, task.OutputPath)

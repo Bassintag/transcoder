@@ -32,7 +32,7 @@ func TaskNew(path string, outputPath string) Task {
 	}
 }
 
-func (task Task) run(mu *sync.Mutex) error {
+func (task *Task) run(mu *sync.Mutex) error {
 	discord := NewDiscordClient(os.Getenv("DISCORD_WEBHOOK"))
 	discord.Trigger(task)
 	mu.Lock()
