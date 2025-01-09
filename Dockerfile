@@ -23,6 +23,7 @@ WORKDIR /app
 COPY --from=builder /a.out ./a.out
 
 ENV ROOT_FOLDER=/data
+ENV GIN_MODE=release
 
 CMD ./a.out
 

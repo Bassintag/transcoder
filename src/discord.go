@@ -52,7 +52,7 @@ func formatProgressBar(ratio float64) string {
 	return buffer.String()
 }
 
-func makePayloadBuffer(task *Task) *bytes.Buffer {
+func makePayloadBuffer(task Task) *bytes.Buffer {
 	fields := []DiscordField{
 		{Name: "Path", Value: task.Path, Inline: false},
 		{Name: "Output path", Value: task.OutputPath, Inline: false},
@@ -105,11 +105,11 @@ type DiscordClient struct {
 	httpClient *http.Client
 }
 
-func NewDiscordClient(webhookUrl string) *DiscordClient {
-	return &DiscordClient{webhookUrl: webhookUrl, httpClient: &http.Client{}}
+func NewDiscordClient(webhookUrl string) DiscordClient {
+	return DiscordClient{webhookUrl: webhookUrl, httpClient: &http.Client{}}
 }
 
-func (client *DiscordClient) Trigger(task *Task) {
+func (client DiscordClient) Trigger(task Task) {
 	payload := makePayloadBuffer(task)
 	method := "POST"
 	url := client.webhookUrl

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"os/exec"
 )
 
@@ -23,8 +24,9 @@ type ProbeFormat struct {
 	Duration       string `json:"duration"`
 }
 
-func ffprobe(task *Task) error {
+func ffprobe(task Task) error {
 	cmd := exec.Command("ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", task.Path)
+	log.Println(cmd.String())
 	stdout, err := cmd.Output()
 	if err != nil {
 		return err
