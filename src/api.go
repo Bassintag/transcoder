@@ -13,10 +13,9 @@ import (
 var mu = sync.Mutex{}
 
 func postTask(c *gin.Context) {
-	c.Status(http.StatusOK)
 	var event RadarrEvent
 	if err := c.BindJSON(&event); err != nil {
-		log.Println(err)
+		c.Status(http.StatusOK)
 		return
 	}
 	rootFolderPath := os.Getenv("ROOT_FOLDER")
@@ -35,6 +34,7 @@ func postTask(c *gin.Context) {
 	)
 	task := TaskNew(taskPath, outputPath)
 	go task.run(&mu)
+	c.Status(http.StatusOK)
 }
 
 func api() {
