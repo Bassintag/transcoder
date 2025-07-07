@@ -1,29 +1,20 @@
-FROM golang:alpine AS builder
+FROM rust:1 AS builder
+
+RUN rustup target add x86_64-unknown-linux-musl
 
 WORKDIR /app
 
-COPY src/go.mod src/go.sum ./
+COPY . .
 
-RUN go mod download
+RUN cargo build --all --release --target x86_64-unknown-linux-musl
 
-COPY src/*.go ./
+CMD ls -l target/release
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /a.out .
-
-FROM alpine:latest AS runner
-
-RUN mkdir /data
-
-RUN apk update &&\
-    apk upgrade &&\
-    apk add --no-cache ffmpeg
+FROM alpine:latest AS release
 
 WORKDIR /app
 
-COPY --from=builder /a.out ./a.out
+COPY --from=builder /app/target/release/api .
+COPY --from=builder /app/target/release/cli .
 
-ENV ROOT_FOLDER=/data
-ENV GIN_MODE=release
-
-CMD ./a.out
-
+CMD ["./api"]

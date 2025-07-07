@@ -1,5 +1,4 @@
 services:
-
   transcoder:
     container_name: transcoder
     build:
@@ -7,4 +6,4 @@ services:
     volumes:
       - ./tmp:/data
     environment:
-      DISCORD_WEBHOOK: ${DISCORD_WEBHOOK}
+      WEBHOOK_URL: ${WEBHOOK_URL}
