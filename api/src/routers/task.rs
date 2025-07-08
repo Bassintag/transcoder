@@ -42,25 +42,25 @@ struct CreateTask {
     movie: Movie,
 
     #[serde(rename = "movieFile")]
-    movie_file: MovieFile,
+    movie_file: Option<MovieFile>,
 }
 
-async fn create(State(state): State<TaskState>, Json(body): Json<CreateTask>) -> Json<CreateTask> {
-    let root = env::var("ROOT_FOLDER").unwrap_or(String::from("."));
-    let folder_path = Path::new(&root).join(&body.movie.folder_path);
-    let output_path = folder_path.join(format!(
-        "{}.h264.aac.stereo.remux.mp4",
-        body.movie.title.replace(" ", ".")
-    ));
-    let input_path = folder_path.join(&body.movie_file.relative_path);
+async fn create(State(state): State<TaskState>, Json(body): Json<CreateTask>) {
+    if let Some(movie_file) = body.movie_file {
+        let root = env::var("ROOT_FOLDER").unwrap_or(String::from("."));
+        let folder_path = Path::new(&root).join(&body.movie.folder_path);
+        let output_path = folder_path.join(format!(
+            "{}.h264.aac.stereo.remux.mp4",
+            body.movie.title.replace(" ", ".")
+        ));
+        let input_path = folder_path.join(&movie_file.relative_path);
 
-    println!("FROM: {:?}, TO: {:?}", input_path, output_path);
+        println!("FROM: {:?}, TO: {:?}", input_path, output_path);
 
-    task::spawn(async move {
-        run_task(&state, input_path, output_path).await;
-    });
-
-    Json(body)
+        task::spawn(async move {
+            run_task(&state, input_path, output_path).await;
+        });
+    }
 }
 
 async fn run_task(state: &TaskState, input_path: PathBuf, output_path: PathBuf) {
