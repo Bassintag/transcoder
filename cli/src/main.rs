@@ -19,8 +19,10 @@ enum Commands {
 
 #[derive(Args)]
 struct ListArgs {
-    #[arg(short, long)]
     path: Option<String>,
+
+    #[arg(short, long)]
+    recursive: bool,
 }
 
 #[derive(Args)]
@@ -49,19 +51,22 @@ async fn main() {
 
 fn cmd_list(args: &ListArgs) {
     let resolved = std::path::Path::new(args.path.as_deref().unwrap_or("."));
-    let entries = list_movie_files(&resolved).unwrap();
-    for entry in entries {
-        let probe = ffprobe(&entry).unwrap();
-        println!(
-            "Found: {}, valid: {}",
-            entry.to_str().unwrap().yellow(),
-            (if probe.is_already_valid() {
-                "TRUE".green()
-            } else {
-                "FALSE".red()
-            })
-            .bold()
-        );
+    if let Ok(entries) = list_movie_files(&resolved, &args.recursive) {
+        for entry in entries {
+            let probe = ffprobe(&entry).unwrap();
+            println!(
+                "Found: {}, valid: {}",
+                entry.to_str().unwrap().yellow(),
+                (if probe.is_already_valid() {
+                    "TRUE".green()
+                } else {
+                    "FALSE".red()
+                })
+                .bold()
+            );
+        }
+    } else {
+        println!("Failed to read path: {}", resolved.to_str().unwrap().red())
     }
 }
 

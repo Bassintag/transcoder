@@ -1,20 +1,20 @@
-FROM rust:1 AS builder
+FROM rust:1-alpine AS builder
 
-RUN rustup target add x86_64-unknown-linux-musl
+RUN apk update && \
+    apk add libressl-dev musl-dev pkgconfig
 
 WORKDIR /app
 
 COPY . .
 
-RUN cargo build --all --release --target x86_64-unknown-linux-musl
-
-CMD ls -l target/release
+RUN cargo build --all --release
 
 FROM alpine:latest AS release
 
-WORKDIR /app
+RUN apk update && \
+    apk add ffmpeg
 
-COPY --from=builder /app/target/release/api .
-COPY --from=builder /app/target/release/cli .
+COPY --from=builder /app/target/release/api /usr/bin/transcoder-api
+COPY --from=builder /app/target/release/cli /usr/bin/transcoder
 
-CMD ["./api"]
+CMD ["transcoder-api"]

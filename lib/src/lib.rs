@@ -11,7 +11,7 @@ pub mod log;
 
 const EXTENSIONS: &[&str] = &["mp4"];
 
-pub fn list_movie_files(path: &Path) -> Result<Vec<PathBuf>, io::Error> {
+pub fn list_movie_files(path: &Path, recursive: &bool) -> Result<Vec<PathBuf>, io::Error> {
     let mut movie_files = Vec::<PathBuf>::new();
 
     for result in fs::read_dir(path)? {
@@ -29,8 +29,8 @@ pub fn list_movie_files(path: &Path) -> Result<Vec<PathBuf>, io::Error> {
                     movie_files.push(file_path);
                 }
             }
-        } else if file_type.is_dir() {
-            let children = list_movie_files(&file_path)?;
+        } else if file_type.is_dir() && *recursive {
+            let children = list_movie_files(&file_path, recursive)?;
             movie_files.extend(children);
         }
     }

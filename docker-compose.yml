@@ -3,7 +3,11 @@ services:
     container_name: transcoder
     build:
       context: .
+    ports:
+      - 3000:80
     volumes:
       - ./tmp:/data
     environment:
+      PORT: 80
+      ROOT_DIR: /data
       WEBHOOK_URL: ${WEBHOOK_URL}
