@@ -52,7 +52,7 @@ impl FFProbeResultStream {
                 self.codec_name.eq_ignore_ascii_case("aac") && self.channels.unwrap_or(2) <= 2
             }
             "subtitle" => self.codec_name.eq_ignore_ascii_case("mov_text"),
-            _ => panic!("Unsupported codec type {}", self.codec_type),
+            _ => true,
         }
     }
 
@@ -61,7 +61,7 @@ impl FFProbeResultStream {
             "video" => "h264",
             "audio" => "aac",
             "subtitle" => "mov_text",
-            _ => panic!("Unsupported codec type {}", self.codec_type),
+            _ => return vec![],
         };
 
         let codec = if self.is_already_valid() {
