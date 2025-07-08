@@ -3,11 +3,11 @@ Content-Type: application/json
 
 {
     "movie": {
-        "title": "Steak l'Apocalypse",
-        "year": 2022,
-        "folderPath": "tmp/downloads"
+        "title": "Kinsey",
+        "year": 2004,
+        "folderPath": "/movies/Kinsey (2004)"
     },
     "movieFile": {
-        "relativePath": "Steak.h264.aac.stereo.remux.mp4"
+        "relativePath": "Kinsey (2004) [1080p] [WEBRip] [5.1] [YTS.MX].mp4"
     }
 }

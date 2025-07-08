@@ -50,7 +50,11 @@ struct CreateTask {
 async fn create(State(state): State<TaskState>, Json(body): Json<CreateTask>) {
     if let Some(movie_file) = body.movie_file {
         let root = env::var("ROOT_FOLDER").unwrap_or(String::from("."));
-        let folder_path = Path::new(&root).join(&body.movie.folder_path);
+        let movie_folder_path = match body.movie.folder_path.strip_prefix("/") {
+            Some(s) => String::from(s),
+            None => body.movie.folder_path,
+        };
+        let folder_path = Path::new(&root).join(&movie_folder_path);
         let re = regex::Regex::new(r"[^A-Za-z0-9]+").unwrap();
         let output_path = folder_path.join(format!(
             "{}.{}.h264.aac.stereo.remux.mp4",
