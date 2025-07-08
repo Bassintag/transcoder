@@ -27,6 +27,8 @@ pub fn create_task_router() -> Router {
 struct Movie {
     title: String,
 
+    year: u32,
+
     #[serde(rename = "folderPath")]
     folder_path: String,
 }
@@ -49,9 +51,11 @@ async fn create(State(state): State<TaskState>, Json(body): Json<CreateTask>) {
     if let Some(movie_file) = body.movie_file {
         let root = env::var("ROOT_FOLDER").unwrap_or(String::from("."));
         let folder_path = Path::new(&root).join(&body.movie.folder_path);
+        let re = regex::Regex::new(r"[^A-Za-z0-9]+").unwrap();
         let output_path = folder_path.join(format!(
-            "{}.h264.aac.stereo.remux.mp4",
-            body.movie.title.replace(" ", ".")
+            "{}.{}.h264.aac.stereo.remux.mp4",
+            re.replace_all(&body.movie.title, "."),
+            body.movie.year
         ));
         let input_path = folder_path.join(&movie_file.relative_path);
 

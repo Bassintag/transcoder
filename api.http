@@ -1,0 +1,13 @@
+POST http://localhost:3000/tasks
+Content-Type: application/json
+
+{
+    "movie": {
+        "title": "Steak l'Apocalypse",
+        "year": 2022,
+        "folderPath": "tmp/downloads"
+    },
+    "movieFile": {
+        "relativePath": "Steak.h264.aac.stereo.remux.mp4"
+    }
+}
