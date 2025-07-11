@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
 use tokio::{self, task::JoinHandle};
@@ -92,25 +94,47 @@ pub struct DiscordProgressHandler {
 }
 
 impl DiscordProgressHandler {
-    pub async fn from_webhook(webhook: &DiscordWebhook) -> DiscordProgressHandler {
+    fn get_payload(input_path: &Path, output_path: &Path, color: u32) -> DiscordEmbed {
+        DiscordEmbed {
+            title: Some("Transcoding file".into()),
+            description: Some("Waiting for ffmpeg to start...".into()),
+            color: Some(color),
+            fields: Some(vec![
+                DiscordEmbedField {
+                    name: "Input".into(),
+                    value: String::from(input_path.to_str().unwrap()),
+                    inline: Some(true),
+                },
+                DiscordEmbedField {
+                    name: "Output".into(),
+                    value: String::from(output_path.to_str().unwrap()),
+                    inline: Some(true),
+                },
+            ]),
+        }
+    }
+
+    pub async fn from_webhook(
+        webhook: &DiscordWebhook,
+        input_path: &Path,
+        output_path: &Path,
+    ) -> Self {
         let message = webhook
-            .execute(DiscordEmbed {
-                title: Some("Transcoding file".into()),
-                description: Some("Waiting for ffmpeg to start...".into()),
-                color: Some(0xa855f7),
-                fields: None,
-            })
+            .execute(Self::get_payload(&input_path, &output_path, 0xa855f7))
             .await;
-        DiscordProgressHandler {
+        Self {
             message,
             handles: Vec::new(),
         }
     }
 
-    pub async fn complete(&mut self) {
+    pub async fn complete(&mut self, input_path: &Path, output_path: &Path) {
         for handle in self.handles.drain(..) {
             let _ = handle.await;
         }
+        self.message
+            .update(Self::get_payload(&input_path, &output_path, 0x22c55e))
+            .await
     }
 }
 
@@ -134,12 +158,12 @@ impl FFMpegProgressHandler for DiscordProgressHandler {
                 fields.push(DiscordEmbedField {
                     name: "Timestamp".into(),
                     value: format!("{}s", progress.out_time_us / 1_000_000),
-                    inline: Some(true),
+                    inline: Some(false),
                 });
                 fields.push(DiscordEmbedField {
                     name: "Speed".into(),
                     value: progress.speed.clone(),
-                    inline: Some(true),
+                    inline: Some(false),
                 });
                 0xf97316
             }

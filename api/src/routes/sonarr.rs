@@ -22,18 +22,18 @@ async fn handle_webhook(State(state): State<AppState>, Json(body): Json<SonarrWe
 
     let episode = &body.episodes[0];
 
-    let series_folder_path = match body.series.path.strip_prefix("/") {
+    let series_folder_path = match episode_file.path.strip_prefix("/") {
         Some(s) => String::from(s),
-        None => body.series.path,
+        None => episode_file.path,
     };
 
-    let folder_path = Path::new(state.root_folder_path.as_ref()).join(&series_folder_path);
+    let input_path = Path::new(state.root_folder_path.as_ref()).join(&series_folder_path);
 
-    let input_path = folder_path.join(&episode_file.relative_path);
+    let folder_path = input_path.parent().expect("Invalid episode path");
 
     let output_path = folder_path.join(get_output_file_name(&format!(
-        "{} {} Season {} Episode {}",
-        &body.series.title, &body.series.year, episode.season_number, episode.episode_number
+        "{} S{:02}E{:02}",
+        &body.series.title, episode.season_number, episode.episode_number
     )));
 
     task::spawn(async move {

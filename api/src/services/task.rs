@@ -4,7 +4,7 @@ use lib::{
     ffprobe::ffprobe,
 };
 use log::info;
-use std::{env, path::PathBuf, sync::Arc};
+use std::{env, path::Path, sync::Arc};
 use tokio::{fs, sync::Mutex};
 
 pub struct TaskService {
@@ -20,12 +20,13 @@ impl TaskService {
         }
     }
 
-    pub async fn run_task(&self, input_path: &PathBuf, output_path: &PathBuf) {
+    pub async fn run_task(&self, input_path: &Path, output_path: &Path) {
         info!("Transcoding: {:?} to {:?}", input_path, output_path);
 
         let probe = ffprobe(&input_path).expect("ffprobe failed");
         let webhook = DiscordWebhook::new(&self.webhook_url);
-        let mut handler = DiscordProgressHandler::from_webhook(&webhook).await;
+        let mut handler =
+            DiscordProgressHandler::from_webhook(&webhook, input_path, output_path).await;
 
         let mut _guard = self.mutex.lock().await;
 
@@ -41,6 +42,6 @@ impl TaskService {
                 .expect("Failed to remove input file");
         }
 
-        handler.complete().await;
+        handler.complete(input_path, output_path).await;
     }
 }

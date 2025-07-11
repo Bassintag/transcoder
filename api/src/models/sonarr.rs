@@ -5,8 +5,6 @@ pub struct SonarrSeries {
     pub title: String,
 
     pub year: u32,
-
-    pub path: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -22,8 +20,7 @@ pub struct SonarrEpisode {
 
 #[derive(Serialize, Deserialize)]
 pub struct SonarrEpisodeFile {
-    #[serde(rename = "relativePath")]
-    pub relative_path: String,
+    pub path: String,
 }
 
 #[derive(Serialize, Deserialize)]
