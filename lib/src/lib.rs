@@ -8,6 +8,7 @@ pub mod discord;
 pub mod ffmpeg;
 pub mod ffprobe;
 pub mod log;
+pub mod utils;
 
 const EXTENSIONS: &[&str] = &["mp4"];
 

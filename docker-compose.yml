@@ -6,8 +6,42 @@ services:
     ports:
       - 3000:80
     volumes:
-      - ./tmp:/data
+      - ./tmp:/tmp
     environment:
       PORT: 80
-      ROOT_DIR: /data
+      ROOT_DIR: /tmp
       WEBHOOK_URL: ${WEBHOOK_URL}
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Europe/Paris
+    ports:
+      - 3001:7878
+    volumes:
+      - ./tmp/config/radarr:/config
+      - ./tmp/movies:/movies
+      - ./tmp/downloads:/downloads
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Europe/Paris
+    ports:
+      - 3002:8989
+    volumes:
+      - ./tmp/config/sonarr:/config
+      - ./tmp/tv:/tv
+      - ./tmp/downloads:/downloads
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

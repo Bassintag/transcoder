@@ -1,0 +1,75 @@
+{
+  "movie": {
+    "id": 1,
+    "title": "Ratatouille",
+    "year": 2007,
+    "releaseDate": "2008-02-20",
+    "folderPath": "/movies/Ratatouille (2007)",
+    "tmdbId": 2062,
+    "imdbId": "tt0382932",
+    "overview": "Remy, a resident of Paris, appreciates good food and has quite a sophisticated palate. He would love to become a chef so he can create and enjoy culinary masterpieces to his heart's delight. The only problem is, Remy is a rat. When he winds up in the sewer beneath one of Paris' finest restaurants, the rodent gourmet finds himself ideally placed to realize his dream.",
+    "genres": ["Animation", "Comedy", "Family", "Fantasy"],
+    "images": [
+      {
+        "coverType": "poster",
+        "url": "/MediaCover/1/poster.jpg?lastWrite=638878569095586875",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/t3vaWRPSf6WjDSamIkKDs1iQWna.jpg"
+      },
+      {
+        "coverType": "fanart",
+        "url": "/MediaCover/1/fanart.jpg?lastWrite=638878569095886872",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/xgDj56UWyeWQcxQ44f5A3RTWuSs.jpg"
+      }
+    ],
+    "tags": [],
+    "originalLanguage": {
+      "id": 1,
+      "name": "English"
+    }
+  },
+  "remoteMovie": {
+    "tmdbId": 2062,
+    "imdbId": "tt0382932",
+    "title": "Ratatouille",
+    "year": 2007
+  },
+  "movieFile": {
+    "id": 1,
+    "relativePath": "Sample.Movie.h264.aac.stereo.remux.mp4",
+    "path": "/movies/Ratatouille (2007)/Sample.Movie.h264.aac.stereo.remux.mp4",
+    "quality": "SDTV",
+    "qualityVersion": 1,
+    "indexerFlags": "0",
+    "size": 1404377,
+    "dateAdded": "2025-07-11T18:55:29.1892383Z",
+    "languages": [
+      {
+        "id": 0,
+        "name": "Unknown"
+      }
+    ],
+    "mediaInfo": {
+      "audioChannels": 0.0,
+      "audioLanguages": [],
+      "height": 540,
+      "width": 960,
+      "subtitles": [],
+      "videoCodec": "x264",
+      "videoDynamicRange": "",
+      "videoDynamicRangeType": ""
+    },
+    "sourcePath": "/downloads/Sample.Movie.h264.aac.stereo.remux.mp4"
+  },
+  "isUpgrade": false,
+  "customFormatInfo": {
+    "customFormats": [],
+    "customFormatScore": 0
+  },
+  "release": {
+    "size": 0,
+    "indexerFlags": []
+  },
+  "eventType": "Download",
+  "instanceName": "Radarr",
+  "applicationUrl": ""
+}
