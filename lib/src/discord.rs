@@ -94,11 +94,18 @@ pub struct DiscordProgressHandler {
 }
 
 impl DiscordProgressHandler {
-    fn get_payload(input_path: &Path, output_path: &Path, color: u32) -> DiscordEmbed {
+    fn get_payload(input_path: &Path, output_path: &Path, done: bool) -> DiscordEmbed {
         DiscordEmbed {
             title: Some("Transcoding file".into()),
-            description: Some("Waiting for ffmpeg to start...".into()),
-            color: Some(color),
+            description: Some(
+                (if done {
+                    "Done"
+                } else {
+                    "Waiting for ffmpeg to start..."
+                })
+                .into(),
+            ),
+            color: Some(if done { 0x22c55e } else { 0xa855f7 }),
             fields: Some(vec![
                 DiscordEmbedField {
                     name: "Input".into(),
@@ -120,7 +127,7 @@ impl DiscordProgressHandler {
         output_path: &Path,
     ) -> Self {
         let message = webhook
-            .execute(Self::get_payload(&input_path, &output_path, 0xa855f7))
+            .execute(Self::get_payload(&input_path, &output_path, false))
             .await;
         Self {
             message,
@@ -133,7 +140,7 @@ impl DiscordProgressHandler {
             let _ = handle.await;
         }
         self.message
-            .update(Self::get_payload(&input_path, &output_path, 0x22c55e))
+            .update(Self::get_payload(&input_path, &output_path, true))
             .await
     }
 }
