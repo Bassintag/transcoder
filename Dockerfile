@@ -1,29 +1,20 @@
-FROM golang:alpine AS builder
+FROM rust:1-alpine AS builder
+
+RUN apk update && \
+    apk add libressl-dev musl-dev pkgconfig
 
 WORKDIR /app
 
-COPY src/go.mod src/go.sum ./
+COPY . .
 
-RUN go mod download
+RUN cargo build --all --release
 
-COPY src/*.go ./
+FROM alpine:latest AS release
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /a.out .
+RUN apk update && \
+    apk add ffmpeg
 
-FROM alpine:latest AS runner
+COPY --from=builder /app/target/release/api /usr/bin/transcoder-api
+COPY --from=builder /app/target/release/cli /usr/bin/transcoder
 
-RUN mkdir /data
-
-RUN apk update &&\
-    apk upgrade &&\
-    apk add --no-cache ffmpeg
-
-WORKDIR /app
-
-COPY --from=builder /a.out ./a.out
-
-ENV ROOT_FOLDER=/data
-ENV GIN_MODE=release
-
-CMD ./a.out
-
+CMD ["transcoder-api"]

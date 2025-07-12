@@ -1,0 +1,13 @@
+POST http://localhost:3003/radarr
+Content-Type: application/json
+
+{
+    "movie": {
+        "title": "Kinsey",
+        "year": 2004,
+        "folderPath": "/movies/Kinsey (2004)"
+    },
+    "movieFile": {
+        "relativePath": "Kinsey (2004) [1080p] [WEBRip] [5.1] [YTS.MX].mp4"
+    }
+}

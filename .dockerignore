@@ -1,6 +1,8 @@
-.idea/
-*.iml
-
+target/
 tmp/
 
+.env
 .gitignore
+
+docker-compose.yml
+Dockerfile
