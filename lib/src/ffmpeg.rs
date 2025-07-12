@@ -1,6 +1,11 @@
 use std::{
-    io::{self, BufRead, BufReader, Error, ErrorKind},
-    process::{Command, Stdio},
+    io::{self, Error, ErrorKind},
+    path::Path,
+    process::Stdio,
+};
+use tokio::{
+    io::{AsyncBufReadExt, BufReader},
+    process::Command,
 };
 
 use crate::ffprobe::FFProbeResult;
@@ -18,18 +23,21 @@ pub struct FFMpegProgress {
     pub command: String,
 }
 
-pub trait FFMpegProgressHandler {
+pub trait FFMpegProgressHandler: Send {
     fn on_progress(&mut self, progress: &FFMpegProgress, probe: &FFProbeResult);
 }
 
-pub fn ffmpeg(
+pub async fn ffmpeg(
     probe: &FFProbeResult,
-    ouput: String,
+    ouput_path: &Path,
     handler: &mut dyn FFMpegProgressHandler,
 ) -> io::Result<()> {
     let args = probe.get_ffmpeg_args();
     let mut binding = Command::new("ffmpeg");
-    let cmd = binding.args(&args).arg(ouput).stdout(Stdio::piped());
+    let cmd = binding
+        .args(&args)
+        .arg(ouput_path.to_str().unwrap())
+        .stdout(Stdio::piped());
 
     let mut child = cmd.spawn()?;
 
@@ -42,12 +50,14 @@ pub fn ffmpeg(
 
     if let Some(stdout) = child.stdout.as_mut() {
         let reader = BufReader::new(stdout);
-        for line_result in reader.lines() {
-            let line = line_result?;
+        let mut lines = reader.lines();
+
+        while let Some(line) = lines.next_line().await.expect("Failed to read output") {
             let parts = line.split("=").collect::<Vec<&str>>();
 
             let key = parts[0];
             let value = parts[1].trim();
+
             match key {
                 "speed" => {
                     progress.speed = String::from(value);
@@ -70,7 +80,7 @@ pub fn ffmpeg(
         }
     }
 
-    match child.wait() {
+    match child.wait().await {
         Ok(status) => {
             if !status.success() {
                 progress.status = FFMpegStatus::ERROR;

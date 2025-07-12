@@ -23,18 +23,14 @@ impl TaskService {
     pub async fn run_task(&self, input_path: &Path, output_path: &Path) {
         info!("Transcoding: {:?} to {:?}", input_path, output_path);
 
-        let probe = ffprobe(&input_path).expect("ffprobe failed");
+        let probe = ffprobe(&input_path).await.expect("ffprobe failed");
         let webhook = DiscordWebhook::new(&self.webhook_url);
         let mut handler =
             DiscordProgressHandler::from_webhook(&webhook, input_path, output_path).await;
 
         let mut _guard = self.mutex.lock().await;
 
-        let ffmpeg_result = ffmpeg(
-            &probe,
-            String::from(output_path.to_str().unwrap()),
-            &mut handler,
-        );
+        let ffmpeg_result = ffmpeg(&probe, output_path, &mut handler).await;
 
         if ffmpeg_result.is_ok() {
             fs::remove_file(input_path)

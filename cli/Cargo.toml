@@ -8,3 +8,4 @@ lib = { path = "../lib" }
 clap = { version = "4.5.40", features = ["derive"] }
 colored = { version = "3" }
 tokio = { version = "1.46.1", features = ["full"] }
+regex = { version = "1.11.1" }

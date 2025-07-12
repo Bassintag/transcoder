@@ -1,10 +1,10 @@
 use std::{
     io::{self, Error, ErrorKind},
     path::Path,
-    process::Command,
 };
 
 use serde::{Deserialize, Serialize};
+use tokio::process::Command;
 
 const FFMPEG_FLAGS: &[&str] = &[
     // Overwrite
@@ -107,7 +107,7 @@ impl FFProbeResult {
     }
 }
 
-pub fn ffprobe(path: &Path) -> io::Result<FFProbeResult> {
+pub async fn ffprobe(path: &Path) -> io::Result<FFProbeResult> {
     let output = Command::new("ffprobe")
         .arg("-v")
         .arg("quiet")
@@ -116,7 +116,8 @@ pub fn ffprobe(path: &Path) -> io::Result<FFProbeResult> {
         .arg("-show_format")
         .arg("-show_streams")
         .arg(path.to_str().unwrap())
-        .output()?;
+        .output()
+        .await?;
 
     if !output.status.success() {
         return Err(Error::new(
