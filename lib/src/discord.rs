@@ -110,12 +110,12 @@ impl DiscordProgressHandler {
                 DiscordEmbedField {
                     name: "Input".into(),
                     value: String::from(input_path.to_str().unwrap()),
-                    inline: Some(true),
+                    inline: Some(false),
                 },
                 DiscordEmbedField {
                     name: "Output".into(),
                     value: String::from(output_path.to_str().unwrap()),
-                    inline: Some(true),
+                    inline: Some(false),
                 },
             ]),
         }
