@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use reqwest::Method;
+use reqwest::{Method, Response};
 use serde::{Deserialize, Serialize};
 use tokio::{self, task::JoinHandle};
 
@@ -44,27 +44,26 @@ impl DiscordWebhook {
         DiscordWebhook { url: url.clone() }
     }
 
-    async fn fetch(
-        &self,
-        method: Method,
-        path: &str,
-        data: DiscordEmbed,
-    ) -> DiscordWebhookResponse {
+    async fn fetch(&self, method: Method, path: &str, data: DiscordEmbed) -> Response {
         let url = self.url.to_owned() + path;
-        let response = reqwest::Client::new()
+        reqwest::Client::new()
             .request(method, url)
             .json(&DiscordWebhookData { embeds: vec![data] })
             .send()
             .await
-            .expect("Request failed");
-
-        response.json().await.expect("Invalid json response")
+            .expect("Discord fetch failed")
     }
 
     async fn execute(&self, embed: DiscordEmbed) -> DiscordWebhookMessage {
         let response = self.fetch(Method::POST, "?wait=true", embed).await;
+
+        let data = response
+            .json::<DiscordWebhookResponse>()
+            .await
+            .expect("Invalid json response");
+
         DiscordWebhookMessage {
-            id: response.id,
+            id: data.id,
             webhook: self.clone(),
         }
     }
