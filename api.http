@@ -2,6 +2,7 @@ POST http://localhost:3003/radarr
 Content-Type: application/json
 
 {
+    "event_type": "Download",
     "movie": {
         "title": "Kinsey",
         "year": 2004,
@@ -9,5 +10,28 @@ Content-Type: application/json
     },
     "movieFile": {
         "relativePath": "Kinsey (2004) [1080p] [WEBRip] [5.1] [YTS.MX].mp4"
+    }
+}
+
+###
+
+POST http://localhost:3003/sonarr
+Content-Type: application/json
+
+{
+    "eventType": "Download",
+    "series": {
+        "title": "My Mister",
+        "year": 2018
+    },
+    "episodes": [
+        {
+            "seasonNumber": 1,
+            "episodeNumber": 1,
+            "title": "50,000-Dollar Trap"
+        }
+    ],
+    "episodeFile": {
+        "path": "/tv/My Mister/Season 1/My.Mister.S01.E01.1080p.NF.WEBRip.DDP2.0.x265-RL.mkv"
     }
 }

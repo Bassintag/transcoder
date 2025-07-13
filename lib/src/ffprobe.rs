@@ -60,7 +60,10 @@ impl FFProbeResultStream {
         let target_codec = match self.codec_type.as_str() {
             "video" => "h264",
             "audio" => "aac",
-            "subtitle" => "mov_text",
+            "subtitle" => match self.codec_name.as_str() {
+                "dvbsub" | "dvdsub" | "pgssub" | "xsub" => return vec![],
+                _ => "mov_text",
+            },
             _ => return vec![],
         };
 
