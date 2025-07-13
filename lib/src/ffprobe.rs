@@ -28,7 +28,7 @@ const FFMPEG_FLAGS: &[&str] = &[
     "-level",
     "3.0",
     "-pix_fmt",
-    "yup420p",
+    "yuv420p",
     // Audio
     "-ac",
     "2",
