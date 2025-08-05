@@ -3,6 +3,7 @@ use std::{
     path::Path,
 };
 
+use reqwest::header::TRAILER;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 
@@ -39,46 +40,58 @@ const FFMPEG_FLAGS: &[&str] = &[
 #[derive(Serialize, Deserialize)]
 pub struct FFProbeResultStream {
     pub index: u8,
-    pub codec_name: String,
+    pub codec_name: Option<String>,
     pub codec_type: String,
     pub channels: Option<u8>,
 }
 
 impl FFProbeResultStream {
     pub fn is_already_valid(&self) -> bool {
-        match self.codec_type.as_str() {
-            "video" => self.codec_name.eq_ignore_ascii_case("h264"),
-            "audio" => {
-                self.codec_name.eq_ignore_ascii_case("aac") && self.channels.unwrap_or(2) <= 2
+        if let Some(codec_name) = &self.codec_name {
+            match self.codec_type.as_str() {
+                "video" => codec_name.eq_ignore_ascii_case("h264"),
+                "audio" => {
+                    codec_name.eq_ignore_ascii_case("aac") && self.channels.unwrap_or(2) <= 2
+                }
+                "subtitle" => codec_name.eq_ignore_ascii_case("mov_text"),
+                _ => true,
             }
-            "subtitle" => self.codec_name.eq_ignore_ascii_case("mov_text"),
-            _ => true,
+        } else {
+            true
         }
     }
 
     pub fn get_ffmpeg_args(&self) -> Vec<String> {
-        let target_codec = match self.codec_type.as_str() {
-            "video" => "h264",
-            "audio" => "aac",
-            "subtitle" => match self.codec_name.as_str() {
-                "dvbsub" | "dvdsub" | "pgssub" | "xsub" => return vec![],
-                _ => "mov_text",
-            },
-            _ => return vec![],
-        };
+        if let Some(target_codec) = match self.codec_type.as_str() {
+            "video" => Some("h264"),
+            "audio" => Some("aac"),
+            "subtitle" => {
+                if let Some(codec_name) = &self.codec_name {
+                    match codec_name.as_str() {
+                        "dvbsub" | "dvdsub" | "pgssub" | "xsub" => None,
+                        _ => Some("mov_text"),
+                    }
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        } {
+            let codec = if self.is_already_valid() {
+                "copy"
+            } else {
+                target_codec
+            };
 
-        let codec = if self.is_already_valid() {
-            "copy"
+            vec![
+                "-map".into(),
+                format!("0:{}", self.index),
+                format!("-c:{}", self.index),
+                codec.into(),
+            ]
         } else {
-            target_codec
-        };
-
-        vec![
-            "-map".into(),
-            format!("0:{}", self.index),
-            format!("-c:{}", self.index),
-            codec.into(),
-        ]
+            vec![]
+        }
     }
 }
 
