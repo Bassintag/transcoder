@@ -9,7 +9,10 @@ use tokio::{
     process::Command,
 };
 
-use crate::{config::FFMpegConfig, ffprobe::FFProbeResult};
+use crate::{
+    config::FFMpegConfig,
+    ffprobe::{FFProbeResult, FFProbeResultStream},
+};
 
 pub struct FFMpegContext<'a> {
     pub probe: &'a FFProbeResult,
@@ -50,7 +53,42 @@ impl FFMpeg {
         }
     }
 
-    fn get_command(&self, probe: &FFProbeResult, output_path: &Path) -> Command {
+    pub fn is_stream_valid(&self, stream: &FFProbeResultStream) -> bool {
+        if let Some(codec_name) = &stream.codec_name {
+            match stream.codec_type.as_str() {
+                "video" => {
+                    if !codec_name.eq_ignore_ascii_case("h264") {
+                        return false;
+                    }
+                    match &stream.bit_rate {
+                        Some(bit_rate_raw) => {
+                            let bit_rate = bit_rate_raw.parse::<u32>().unwrap_or(0);
+                            bit_rate <= self.config.video_maxrate
+                        }
+                        _ => true,
+                    }
+                }
+                "audio" => {
+                    codec_name.eq_ignore_ascii_case("aac") && stream.channels.unwrap_or(2) <= 2
+                }
+                "subtitle" => codec_name.eq_ignore_ascii_case("mov_text"),
+                _ => true,
+            }
+        } else {
+            true
+        }
+    }
+
+    pub fn is_valid(&self, probe: &FFProbeResult) -> bool {
+        for stream in probe.streams.iter() {
+            if !self.is_stream_valid(&stream) {
+                return false;
+            }
+        }
+        true
+    }
+
+    pub fn get_command(&self, probe: &FFProbeResult, output_path: &Path) -> Command {
         let maxrate = self.config.video_maxrate;
         let mut cmd = Command::new("ffmpeg");
         cmd
@@ -105,7 +143,7 @@ impl FFMpeg {
                 }
                 _ => None,
             } {
-                let codec = if stream.is_already_valid() {
+                let codec = if self.is_stream_valid(&stream) {
                     "copy"
                 } else {
                     target_codec
