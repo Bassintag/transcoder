@@ -27,7 +27,7 @@ async fn handle_webhook(State(state): State<AppState>, Json(body): Json<SonarrWe
         None => episode_file.path,
     };
 
-    let input_path = Path::new(state.root_folder_path.as_ref()).join(&series_folder_path);
+    let input_path = Path::new(state.args.root_folder_path.as_str()).join(&series_folder_path);
 
     let folder_path = input_path.parent().expect("Invalid episode path");
 

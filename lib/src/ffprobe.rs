@@ -3,7 +3,6 @@ use std::{
     path::Path,
 };
 
-use reqwest::header::TRAILER;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 
@@ -30,6 +29,10 @@ const FFMPEG_FLAGS: &[&str] = &[
     "3.0",
     "-pix_fmt",
     "yuv420p",
+    "-maxrate",
+    "2500k",
+    "-bufsize",
+    "5000k",
     // Audio
     "-ac",
     "2",
@@ -43,13 +46,25 @@ pub struct FFProbeResultStream {
     pub codec_name: Option<String>,
     pub codec_type: String,
     pub channels: Option<u8>,
+    pub bit_rate: Option<String>,
 }
 
 impl FFProbeResultStream {
     pub fn is_already_valid(&self) -> bool {
         if let Some(codec_name) = &self.codec_name {
             match self.codec_type.as_str() {
-                "video" => codec_name.eq_ignore_ascii_case("h264"),
+                "video" => {
+                    if !codec_name.eq_ignore_ascii_case("h264") {
+                        return false;
+                    }
+                    match &self.bit_rate {
+                        Some(bit_rate_raw) => {
+                            let bit_rate = bit_rate_raw.parse::<u32>().unwrap_or(0);
+                            bit_rate <= 2_500_000
+                        }
+                        _ => true,
+                    }
+                }
                 "audio" => {
                     codec_name.eq_ignore_ascii_case("aac") && self.channels.unwrap_or(2) <= 2
                 }

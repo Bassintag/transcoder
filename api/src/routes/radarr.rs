@@ -25,7 +25,7 @@ async fn handle_webhook(State(state): State<AppState>, Json(body): Json<RadarrWe
         None => body.movie.folder_path,
     };
 
-    let folder_path = Path::new(state.root_folder_path.as_ref()).join(&movie_folder_path);
+    let folder_path = Path::new(state.args.root_folder_path.as_str()).join(&movie_folder_path);
 
     let input_path = folder_path.join(&movie_file.relative_path);
 

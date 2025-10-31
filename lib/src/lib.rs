@@ -7,6 +7,7 @@ use std::{
 use async_recursion::async_recursion;
 use tokio::fs::read_dir;
 
+pub mod config;
 pub mod discord;
 pub mod ffmpeg;
 pub mod ffprobe;

@@ -1,7 +1,14 @@
 use clap::Args;
-use lib::{ffmpeg::ffmpeg, ffprobe::ffprobe, log::LogProgressHandler, utils::get_output_file_name};
+use lib::{
+    config::Config,
+    discord::{DiscordEventHandler, DiscordWebhook},
+    ffmpeg::FFMpeg,
+    ffprobe::ffprobe,
+    log::LogEventHandler,
+    utils::get_output_file_name,
+};
 use regex;
-use std::{fs, path::Path};
+use std::path::Path;
 
 #[derive(Args)]
 pub struct TranscodeArgs {
@@ -9,6 +16,9 @@ pub struct TranscodeArgs {
 
     #[arg(short, long)]
     out: Option<String>,
+
+    #[command(flatten)]
+    config: Config,
 }
 
 pub async fn cmd_transcode(args: &TranscodeArgs) {
@@ -45,17 +55,28 @@ pub async fn cmd_transcode(args: &TranscodeArgs) {
 
     let output_path = Path::new(&output);
 
-    let mut handler = LogProgressHandler {};
-
     println!(
         "Transcoding {} to {}",
         input_path.to_str().unwrap(),
         output_path.to_str().unwrap()
     );
 
-    ffmpeg(&probe, output_path, &mut handler)
+    let mut ffmpeg = FFMpeg::new(&args.config.ffmpeg);
+
+    let log_handler = LogEventHandler::new();
+    ffmpeg.subscribe(move |event| {
+        log_handler.listener(event);
+    });
+
+    if let Some(webhook_url) = &args.config.discord.webhook_url {
+        let mut discord_handler = DiscordEventHandler::new(DiscordWebhook::new(webhook_url));
+        ffmpeg.subscribe(move |event| {
+            discord_handler.listener(event);
+        });
+    }
+
+    ffmpeg
+        .transcode(&probe, output_path)
         .await
         .expect("ffmpeg failed");
-
-    fs::remove_file(input_path).expect("Failed to remove input file");
 }

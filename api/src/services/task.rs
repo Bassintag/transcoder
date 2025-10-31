@@ -1,22 +1,24 @@
 use lib::{
-    discord::{DiscordProgressHandler, DiscordWebhook},
-    ffmpeg::ffmpeg,
+    discord::{DiscordEventHandler, DiscordWebhook},
+    ffmpeg::FFMpeg,
     ffprobe::ffprobe,
 };
-use log::info;
-use std::{env, path::Path, sync::Arc};
-use tokio::{fs, sync::Mutex};
+use log::{error, info};
+use std::{path::Path, sync::Arc};
+use tokio::sync::Mutex;
+
+use crate::state::AppArgs;
 
 pub struct TaskService {
     mutex: Arc<Mutex<()>>,
-    webhook_url: String,
+    args: Arc<AppArgs>,
 }
 
 impl TaskService {
-    pub fn new() -> Self {
+    pub fn new(args: Arc<AppArgs>) -> Self {
         Self {
             mutex: Arc::new(Mutex::new(())),
-            webhook_url: env::var("WEBHOOK_URL").expect("Missing WEBHOOK_URL env"),
+            args,
         }
     }
 
@@ -24,20 +26,20 @@ impl TaskService {
         info!("Transcoding: {:?} to {:?}", input_path, output_path);
 
         let probe = ffprobe(&input_path).await.expect("ffprobe failed");
-        let webhook = DiscordWebhook::new(&self.webhook_url);
-        let mut handler =
-            DiscordProgressHandler::from_webhook(&webhook, input_path, output_path).await;
+        let mut ffmpeg = FFMpeg::new(&self.args.config.ffmpeg);
+
+        if let Some(webhook_url) = &self.args.config.discord.webhook_url {
+            let webhook = DiscordWebhook::new(&webhook_url);
+            let mut event_handler = DiscordEventHandler::new(webhook);
+            ffmpeg.subscribe(move |event| {
+                event_handler.listener(event);
+            });
+        }
 
         let mut _guard = self.mutex.lock().await;
 
-        let ffmpeg_result = ffmpeg(&probe, output_path, &mut handler).await;
-
-        if ffmpeg_result.is_ok() {
-            fs::remove_file(input_path)
-                .await
-                .expect("Failed to remove input file");
+        if let Err(e) = ffmpeg.transcode(&probe, output_path).await {
+            error!("An error happened while transcoding {}", e);
         }
-
-        handler.complete(input_path, output_path).await;
     }
 }
