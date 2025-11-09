@@ -9,10 +9,11 @@ impl LogEventHandler {
 
     pub fn listener(&self, event: &FFMpegEvent) {
         match event {
-            FFMpegEvent::PROGRESS(context, progress) => {
+            FFMpegEvent::PROGRESS(_, progress) => {
                 println!(
-                    "[Transcoding] speed: '{}', filename: '{}'",
-                    progress.speed, context.probe.format.filename
+                    "[Transcoding] speed: {}, timestamp: {:}s",
+                    progress.speed,
+                    progress.out_time_us / 1_000_000
                 )
             }
             _ => {}

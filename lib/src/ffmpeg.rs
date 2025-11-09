@@ -53,6 +53,19 @@ impl FFMpeg {
         }
     }
 
+    fn get_tmp_output_path(output_path: &Path) -> PathBuf {
+        let file_name = output_path.file_name().and_then(|s| s.to_str()).unwrap();
+        let folder_name = output_path
+            .parent()
+            .and_then(|p| p.as_os_str().to_str())
+            .unwrap_or(".");
+        if folder_name.len() == 0 {
+            PathBuf::from(format!("{}.part", file_name))
+        } else {
+            PathBuf::from(format!("{}/{}.part", folder_name, file_name))
+        }
+    }
+
     pub fn is_stream_valid(&self, stream: &FFProbeResultStream) -> bool {
         if let Some(codec_name) = &stream.codec_name {
             match stream.codec_type.as_str() {
@@ -110,6 +123,8 @@ impl FFMpeg {
             // General
             .arg("-movflags")
             .arg("faststart")
+            .arg("-f")
+            .arg("mp4")
             // Video
             .arg("-crf")
             .arg(self.config.crf_level.to_string())
@@ -172,8 +187,45 @@ impl FFMpeg {
         self.listeners.push(Box::new(f));
     }
 
+    pub async fn move_srt_files(
+        input_path: &Path,
+        output_path: &Path,
+        keep_original: bool,
+    ) -> io::Result<()> {
+        if let Some(input_folder_path) = input_path.parent()
+            && let Some(output_folder_path) = output_path.parent()
+            && let Some(input_stem) = input_path.file_stem().and_then(|s| s.to_str())
+            && let Some(output_stem) = output_path.file_stem().and_then(|s| s.to_str())
+        {
+            let mut read_dir = fs::read_dir(&input_folder_path).await?;
+            while let Some(entry) = read_dir.next_entry().await? {
+                let entry_path = entry.path();
+                if entry_path == input_path || entry_path == output_path {
+                    continue;
+                }
+                if let Some(entry_name) = entry_path.file_name().and_then(|s| s.to_str())
+                    && entry_name.starts_with(input_stem)
+                {
+                    let target_path = output_folder_path.join(format!(
+                        "{}{}",
+                        output_stem,
+                        &entry_name[input_stem.len()..]
+                    ));
+                    if keep_original {
+                        fs::copy(entry_path, target_path).await?;
+                    } else {
+                        fs::rename(entry_path, target_path).await?;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     pub async fn transcode(&mut self, probe: &FFProbeResult, output_path: &Path) -> io::Result<()> {
-        let mut binding = self.get_command(probe, output_path);
+        let tmp_output_path = Self::get_tmp_output_path(output_path);
+        let mut binding = self.get_command(probe, &tmp_output_path);
         let cmd = binding.stdout(Stdio::piped());
 
         let mut child = cmd.spawn()?;
@@ -244,9 +296,13 @@ impl FFMpeg {
             }
         }
 
-        if !self.config.keep_input_file {
-            fs::remove_file(PathBuf::from(probe.format.filename.as_str())).await?;
+        fs::rename(tmp_output_path, output_path).await?;
+
+        let input_path = PathBuf::from(probe.format.filename.as_str());
+        if !self.config.keep_input_file && input_path != output_path {
+            fs::remove_file(&input_path).await?;
         }
+        Self::move_srt_files(&input_path, output_path, self.config.keep_input_file).await?;
 
         self.emit(&FFMpegEvent::DONE(&context));
 

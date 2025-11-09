@@ -1,3 +1,5 @@
+use std::process::ExitCode;
+
 use clap::{Parser, Subcommand};
 
 use crate::commands::{
@@ -11,7 +13,7 @@ mod commands;
 #[command(version)]
 struct Cli {
     #[command(subcommand)]
-    command: Option<Commands>,
+    command: Commands,
 }
 
 #[derive(Subcommand)]
@@ -21,16 +23,20 @@ enum Commands {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> ExitCode {
     let cli = Cli::parse();
 
     match &cli.command {
-        Some(Commands::List(args)) => {
+        Commands::List(args) => {
             cmd_list(args).await;
+            ExitCode::SUCCESS
         }
-        Some(Commands::Transcode(args)) => {
-            cmd_transcode(args).await;
-        }
-        None => {}
+        Commands::Transcode(args) => match cmd_transcode(args).await {
+            Ok(_) => ExitCode::SUCCESS,
+            Err(e) => {
+                println!("Error: {}", e);
+                ExitCode::FAILURE
+            }
+        },
     }
 }
