@@ -110,7 +110,7 @@ async fn get_output_path(input_path: &Path) -> anyhow::Result<PathBuf> {
     }
 
     if let Some(year) = root_folder_captures.get(2) {
-        name = format!("{} {:?}", name, year);
+        name = format!("{} {}", name, year.as_str());
     }
 
     Ok(folder_path.join(&get_output_file_name(&name)))
