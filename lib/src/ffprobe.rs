@@ -6,7 +6,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct FFProbeResultStream {
     pub index: u8,
     pub codec_name: Option<String>,
@@ -15,7 +15,7 @@ pub struct FFProbeResultStream {
     pub bit_rate: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct FFProbeResultFormat {
     pub filename: String,
     pub format_name: String,
@@ -23,7 +23,7 @@ pub struct FFProbeResultFormat {
     pub duration: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct FFProbeResult {
     pub streams: Vec<FFProbeResultStream>,
     pub format: FFProbeResultFormat,

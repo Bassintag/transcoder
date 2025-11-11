@@ -5,7 +5,7 @@ use lib::{
 };
 use log::{error, info};
 use std::{path::Path, sync::Arc};
-use tokio::sync::Mutex;
+use tokio::{sync::Mutex, task::JoinSet};
 
 use crate::state::AppArgs;
 
@@ -27,12 +27,14 @@ impl TaskService {
 
         let probe = ffprobe(&input_path).await.expect("ffprobe failed");
         let mut ffmpeg = FFMpeg::new(&self.args.config.ffmpeg);
+        let mut join_set = JoinSet::new();
 
         if let Some(webhook_url) = &self.args.config.discord.webhook_url {
             let webhook = DiscordWebhook::new(&webhook_url);
-            let mut event_handler = DiscordEventHandler::new(webhook);
-            ffmpeg.subscribe(move |event| {
-                event_handler.listener(event);
+            let mut discord_handler = DiscordEventHandler::new(webhook);
+            let rx = ffmpeg.subscribe();
+            join_set.spawn(async move {
+                discord_handler.listen(rx).await;
             });
         }
 
@@ -41,5 +43,7 @@ impl TaskService {
         if let Err(e) = ffmpeg.transcode(&probe, output_path).await {
             error!("An error happened while transcoding {}", e);
         }
+
+        join_set.join_all().await;
     }
 }

@@ -1,8 +1,6 @@
-use std::sync::Arc;
-
 use reqwest::{Method, Response};
 use serde::{Deserialize, Serialize};
-use tokio::{self, sync::Mutex};
+use tokio::{self, sync::broadcast::Receiver};
 
 use crate::ffmpeg::FFMpegEvent;
 
@@ -86,15 +84,11 @@ impl DiscordWebhookMessage {
 
 pub struct DiscordEventHandler {
     webhook: DiscordWebhook,
-    message: Arc<Mutex<Option<DiscordWebhookMessage>>>,
 }
 
 impl DiscordEventHandler {
     pub fn new(webhook: DiscordWebhook) -> Self {
-        Self {
-            webhook,
-            message: Arc::new(Mutex::new(None)),
-        }
+        Self { webhook }
     }
 
     fn get_payload(event: &FFMpegEvent) -> DiscordEmbed {
@@ -164,81 +158,21 @@ impl DiscordEventHandler {
         }
     }
 
-    pub fn listener(&mut self, event: &FFMpegEvent<'_>) {
-        let embed = Self::get_payload(&event);
-        let message_storage = Arc::clone(&self.message);
+    pub async fn listen(&mut self, mut rx: Receiver<FFMpegEvent>) {
+        let mut message_opt: Option<DiscordWebhookMessage> = None;
 
-        match event {
-            FFMpegEvent::START(_) => {
-                let webhook = self.webhook.clone();
-                tokio::spawn(async move {
-                    let message = webhook.execute(embed).await;
-                    *message_storage.lock().await = Some(message);
-                });
+        while let Ok(event) = rx.recv().await {
+            let embed = Self::get_payload(&event);
+
+            if let FFMpegEvent::START(_) = event {
+                message_opt = Some(self.webhook.clone().execute(embed).await);
+            } else if let Some(message) = &message_opt {
+                message.update(embed).await;
             }
-            _ => {
-                tokio::spawn(async move {
-                    if let Some(message) = &*message_storage.lock().await {
-                        message.update(embed).await;
-                    }
-                });
+
+            if let FFMpegEvent::DONE(_) = event {
+                break;
             }
         }
     }
 }
-
-// impl FFMpegProgressHandler for DiscordProgressHandler {
-//     fn on_progress(&mut self, progress: &FFMpegProgress, probe: &FFProbeResult) {
-//         let mut fields = vec![DiscordEmbedField {
-//             name: "File name".into(),
-//             value: probe.format.filename.clone(),
-//             inline: None,
-//         }];
-
-//         let duration: f64 = probe.format.duration.parse().unwrap();
-
-//         let color: u32 = match progress.status {
-//             FFMpegStatus::CONTINUE => {
-//                 fields.push(DiscordEmbedField {
-//                     name: "Duration".into(),
-//                     value: format!("{:.0}s", duration),
-//                     inline: Some(true),
-//                 });
-//                 fields.push(DiscordEmbedField {
-//                     name: "Timestamp".into(),
-//                     value: format!("{}s", progress.out_time_us / 1_000_000),
-//                     inline: Some(false),
-//                 });
-//                 fields.push(DiscordEmbedField {
-//                     name: "Speed".into(),
-//                     value: progress.speed.clone(),
-//                     inline: Some(false),
-//                 });
-//                 0xf97316
-//             }
-//             FFMpegStatus::END => 0x22c55e,
-//             FFMpegStatus::ERROR => 0xef4444,
-//         };
-
-//         fields.push(DiscordEmbedField {
-//             name: "Command".into(),
-//             value: format!("```shell\n{}\n```", progress.command.clone()),
-//             inline: Some(false),
-//         });
-
-//         let message = self.message.clone();
-
-//         let handle = tokio::task::spawn(async move {
-//             message
-//                 .update(DiscordEmbed {
-//                     title: Some("Transcoding file".into()),
-//                     description: None,
-//                     color: Some(color),
-//                     fields: Some(fields),
-//                 })
-//                 .await;
-//         });
-
-//         self.handles.push(handle);
-//     }
-// }

@@ -7,6 +7,8 @@ use tokio::{
     fs,
     io::{AsyncBufReadExt, BufReader},
     process::Command,
+    sync::broadcast,
+    task::JoinSet,
 };
 
 use crate::{
@@ -14,8 +16,9 @@ use crate::{
     ffprobe::{FFProbeResult, FFProbeResultStream},
 };
 
-pub struct FFMpegContext<'a> {
-    pub probe: &'a FFProbeResult,
+#[derive(Clone)]
+pub struct FFMpegContext {
+    pub probe: FFProbeResult,
     pub command: String,
     pub input_path: String,
     pub output_path: String,
@@ -27,30 +30,32 @@ pub struct FFMpegProgress {
     pub out_time_us: u64,
 }
 
-pub enum FFMpegEvent<'a> {
-    START(&'a FFMpegContext<'a>),
-    PROGRESS(&'a FFMpegContext<'a>, FFMpegProgress),
-    DONE(&'a FFMpegContext<'a>),
-    ERROR(&'a FFMpegContext<'a>),
+#[derive(Clone)]
+pub enum FFMpegEvent {
+    START(FFMpegContext),
+    PROGRESS(FFMpegContext, FFMpegProgress),
+    DONE(FFMpegContext),
+    ERROR(FFMpegContext),
 }
 
 pub struct FFMpeg {
     pub config: FFMpegConfig,
-    listeners: Vec<Box<dyn FnMut(&FFMpegEvent) + Send>>,
+    pool: JoinSet<()>,
+    tx: broadcast::Sender<FFMpegEvent>,
 }
 
 impl FFMpeg {
     pub fn new(config: &FFMpegConfig) -> Self {
+        let (tx, _) = broadcast::channel(1);
         Self {
             config: config.clone(),
-            listeners: Vec::new(),
+            pool: JoinSet::new(),
+            tx,
         }
     }
 
-    fn emit(&mut self, event: &FFMpegEvent) {
-        for listener in self.listeners.iter_mut() {
-            listener(event)
-        }
+    fn emit(&mut self, event: FFMpegEvent) {
+        let _ = self.tx.send(event);
     }
 
     fn get_tmp_output_path(output_path: &Path) -> PathBuf {
@@ -180,11 +185,8 @@ impl FFMpeg {
         cmd
     }
 
-    pub fn subscribe<F>(&mut self, f: F)
-    where
-        F: FnMut(&FFMpegEvent) + Send + 'static,
-    {
-        self.listeners.push(Box::new(f));
+    pub fn subscribe(&self) -> broadcast::Receiver<FFMpegEvent> {
+        self.tx.subscribe()
     }
 
     pub async fn move_srt_files(
@@ -232,7 +234,7 @@ impl FFMpeg {
         let std_cmd = cmd.as_std();
 
         let context = FFMpegContext {
-            probe,
+            probe: probe.clone(),
             command: format!(
                 "{} {}",
                 std_cmd.get_program().to_string_lossy(),
@@ -246,7 +248,7 @@ impl FFMpeg {
             output_path: output_path.display().to_string(),
         };
 
-        self.emit(&FFMpegEvent::START(&context));
+        self.emit(FFMpegEvent::START(context.clone()));
 
         if let Some(stdout) = child.stdout.as_mut() {
             let reader = BufReader::new(stdout);
@@ -273,7 +275,7 @@ impl FFMpeg {
                         }
                     }
                     "progress" => {
-                        self.emit(&FFMpegEvent::PROGRESS(&context, progress.clone()));
+                        self.emit(FFMpegEvent::PROGRESS(context.clone(), progress.clone()));
                     }
                     _ => (),
                 }
@@ -283,7 +285,7 @@ impl FFMpeg {
         match child.wait().await {
             Ok(status) => {
                 if !status.success() {
-                    self.emit(&FFMpegEvent::ERROR(&context));
+                    self.emit(FFMpegEvent::ERROR(context));
                     return Err(Error::new(
                         ErrorKind::Other,
                         format!("ffmpeg exited with status: {:?}", status.code()),
@@ -291,7 +293,7 @@ impl FFMpeg {
                 }
             }
             Err(error) => {
-                self.emit(&FFMpegEvent::ERROR(&context));
+                self.emit(FFMpegEvent::ERROR(context));
                 return Err(error);
             }
         }
@@ -304,8 +306,12 @@ impl FFMpeg {
         }
         Self::move_srt_files(&input_path, output_path, self.config.keep_input_file).await?;
 
-        self.emit(&FFMpegEvent::DONE(&context));
+        self.emit(FFMpegEvent::DONE(context));
 
         Ok(())
+    }
+
+    pub async fn dispose(self) {
+        self.pool.join_all().await;
     }
 }

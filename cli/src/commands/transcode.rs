@@ -5,12 +5,13 @@ use lib::{
     discord::{DiscordEventHandler, DiscordWebhook},
     ffmpeg::FFMpeg,
     ffprobe::ffprobe,
+    list_movie_files,
     log::LogEventHandler,
     utils::get_output_file_name,
 };
 use regex;
 use std::path::{Path, PathBuf};
-use tokio::fs;
+use tokio::{fs, task::JoinSet};
 
 #[derive(Args)]
 pub struct TranscodeArgs {
@@ -18,6 +19,12 @@ pub struct TranscodeArgs {
 
     #[arg(short, long)]
     out: Option<String>,
+
+    #[arg(short, long)]
+    recursive: bool,
+
+    #[arg(short, long)]
+    force: bool,
 
     #[command(flatten)]
     config: Config,
@@ -27,14 +34,20 @@ pub async fn cmd_transcode(args: &TranscodeArgs) -> anyhow::Result<()> {
     let input_path = fs::canonicalize(Path::new(&args.path)).await?;
 
     let mut ffmpeg = FFMpeg::new(&args.config.ffmpeg);
+
+    let mut join_set = JoinSet::new();
+
     let log_handler = LogEventHandler::new();
-    ffmpeg.subscribe(move |event| {
-        log_handler.listener(event);
+    let rx = ffmpeg.subscribe();
+    join_set.spawn(async move {
+        log_handler.listen(rx).await;
     });
+
     if let Some(webhook_url) = &args.config.discord.webhook_url {
         let mut discord_handler = DiscordEventHandler::new(DiscordWebhook::new(webhook_url));
-        ffmpeg.subscribe(move |event| {
-            discord_handler.listener(event);
+        let rx = ffmpeg.subscribe();
+        join_set.spawn(async move {
+            discord_handler.listen(rx).await;
         });
     }
 
@@ -45,19 +58,15 @@ pub async fn cmd_transcode(args: &TranscodeArgs) -> anyhow::Result<()> {
             Some(path) => path,
             None => get_output_path(&input_path).await?,
         };
-        transcode_file(&input_path, &output_path, &mut ffmpeg).await?;
+        transcode_file(&input_path, &output_path, &mut ffmpeg, args.force).await?;
     } else if metadata.is_dir() {
-        let mut read_dir = fs::read_dir(&input_path).await?;
-        while let Some(entry) = read_dir.next_entry().await? {
-            let entry_path = entry.path();
-            if let Some(extension) = entry_path.extension().and_then(|s| s.to_str())
-                && ["mkv", "mp4"].iter().any(|e| extension.eq(*e))
-            {
-                let output_path = get_output_path(&entry_path).await?;
-                transcode_file(&entry_path, &output_path, &mut ffmpeg).await?;
-            }
+        for entry in list_movie_files(&input_path, &args.recursive).await? {
+            let output_path = get_output_path(&entry).await?;
+            transcode_file(&entry, &output_path, &mut ffmpeg, args.force).await?;
         }
     }
+
+    join_set.join_all().await;
 
     Ok(())
 }
@@ -111,12 +120,16 @@ async fn transcode_file(
     input_path: &Path,
     output_path: &Path,
     ffmpeg: &mut FFMpeg,
+    force: bool,
 ) -> anyhow::Result<()> {
-    println!(
-        "Transcoding {} to {}",
-        input_path.to_str().unwrap(),
-        output_path.to_str().unwrap()
-    );
-    let probe = ffprobe(input_path).await.unwrap();
-    Ok(ffmpeg.transcode(&probe, output_path).await?)
+    let probe = ffprobe(input_path).await?;
+    if force || !ffmpeg.is_valid(&probe) {
+        println!(
+            "Transcoding {} to {}",
+            input_path.to_str().unwrap(),
+            output_path.to_str().unwrap()
+        );
+        ffmpeg.transcode(&probe, output_path).await?
+    }
+    Ok(())
 }
