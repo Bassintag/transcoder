@@ -31,6 +31,8 @@ impl LogEventHandler {
                         bar.set_prefix(file_name.to_string());
                     }
                     bar.set_length(seconds.round() as u64);
+                    bar.reset_elapsed();
+                    bar.reset_eta();
                 }
                 FFMpegEvent::PROGRESS(_, progress) => {
                     bar.set_position(progress.out_time_us / 1_000_000);
