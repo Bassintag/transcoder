@@ -66,6 +66,8 @@ pub async fn cmd_transcode(args: &TranscodeArgs) -> anyhow::Result<()> {
         }
     }
 
+    ffmpeg.dispose();
+
     join_set.join_all().await;
 
     Ok(())
@@ -124,11 +126,6 @@ async fn transcode_file(
 ) -> anyhow::Result<()> {
     let probe = ffprobe(input_path).await?;
     if force || !ffmpeg.is_valid(&probe) {
-        println!(
-            "Transcoding {} to {}",
-            input_path.to_str().unwrap(),
-            output_path.to_str().unwrap()
-        );
         ffmpeg.transcode(&probe, output_path).await?
     }
     Ok(())

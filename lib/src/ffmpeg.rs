@@ -8,7 +8,6 @@ use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
     sync::broadcast,
-    task::JoinSet,
 };
 
 use crate::{
@@ -36,11 +35,11 @@ pub enum FFMpegEvent {
     PROGRESS(FFMpegContext, FFMpegProgress),
     DONE(FFMpegContext),
     ERROR(FFMpegContext),
+    CLOSE(),
 }
 
 pub struct FFMpeg {
     pub config: FFMpegConfig,
-    pool: JoinSet<()>,
     tx: broadcast::Sender<FFMpegEvent>,
 }
 
@@ -49,7 +48,6 @@ impl FFMpeg {
         let (tx, _) = broadcast::channel(1);
         Self {
             config: config.clone(),
-            pool: JoinSet::new(),
             tx,
         }
     }
@@ -311,7 +309,7 @@ impl FFMpeg {
         Ok(())
     }
 
-    pub async fn dispose(self) {
-        self.pool.join_all().await;
+    pub fn dispose(&mut self) {
+        self.emit(FFMpegEvent::CLOSE());
     }
 }

@@ -91,7 +91,7 @@ impl DiscordEventHandler {
         Self { webhook }
     }
 
-    fn get_payload(event: &FFMpegEvent) -> DiscordEmbed {
+    fn get_payload(event: &FFMpegEvent) -> Option<DiscordEmbed> {
         let (description, color, context, mut additional_fields) = match event {
             FFMpegEvent::START(context) => {
                 ("Waiting for ffmpeg to start...", 0xa855f7, context, vec![])
@@ -127,6 +127,7 @@ impl DiscordEventHandler {
             FFMpegEvent::ERROR(context) => {
                 ("An unexpected error happened", 0xef4444, context, vec![])
             }
+            _ => return None,
         };
 
         let mut fields = vec![
@@ -150,27 +151,27 @@ impl DiscordEventHandler {
             inline: Some(false),
         });
 
-        DiscordEmbed {
+        Some(DiscordEmbed {
             title: Some("Transcoding file".into()),
             description: Some(description.into()),
             color: Some(color),
             fields: Some(fields),
-        }
+        })
     }
 
     pub async fn listen(&mut self, mut rx: Receiver<FFMpegEvent>) {
         let mut message_opt: Option<DiscordWebhookMessage> = None;
 
         while let Ok(event) = rx.recv().await {
-            let embed = Self::get_payload(&event);
-
-            if let FFMpegEvent::START(_) = event {
-                message_opt = Some(self.webhook.clone().execute(embed).await);
-            } else if let Some(message) = &message_opt {
-                message.update(embed).await;
+            if let Some(embed) = Self::get_payload(&event) {
+                if let FFMpegEvent::START(_) = event {
+                    message_opt = Some(self.webhook.clone().execute(embed).await);
+                } else if let Some(message) = &message_opt {
+                    message.update(embed).await;
+                }
             }
 
-            if let FFMpegEvent::DONE(_) = event {
+            if let FFMpegEvent::CLOSE() = event {
                 break;
             }
         }
