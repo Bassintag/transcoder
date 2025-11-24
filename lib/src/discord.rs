@@ -171,8 +171,9 @@ impl DiscordEventHandler {
                 }
             }
 
-            if let FFMpegEvent::CLOSE() = event {
-                break;
+            match event {
+                FFMpegEvent::CLOSE() | FFMpegEvent::ERROR(_) => break,
+                _ => (),
             }
         }
     }

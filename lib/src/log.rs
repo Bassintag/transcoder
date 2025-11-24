@@ -38,10 +38,8 @@ impl LogEventHandler {
                     bar.set_position(progress.out_time_us / 1_000_000);
                     bar.set_message(progress.speed);
                 }
-                FFMpegEvent::CLOSE() => {
-                    break;
-                }
-                _ => {}
+                FFMpegEvent::CLOSE() | FFMpegEvent::ERROR(_) => break,
+                _ => (),
             }
         }
         bar.finish();

@@ -38,11 +38,13 @@ impl TaskService {
             });
         }
 
-        let mut _guard = self.mutex.lock().await;
+        let guard = self.mutex.lock().await;
 
         if let Err(e) = ffmpeg.transcode(&probe, output_path).await {
             error!("An error happened while transcoding {}", e);
         }
+
+        drop(guard);
 
         join_set.join_all().await;
     }

@@ -2,14 +2,14 @@ POST http://localhost:3003/radarr
 Content-Type: application/json
 
 {
-    "event_type": "Download",
+    "eventType": "Download",
     "movie": {
-        "title": "Kinsey",
-        "year": 2004,
-        "folderPath": "/movies/Kinsey (2004)"
+        "title": "Tokyo Godfathers",
+        "year": 2003,
+        "folderPath": "tmp/movies"
     },
     "movieFile": {
-        "relativePath": "Kinsey (2004) [1080p] [WEBRip] [5.1] [YTS.MX].mp4"
+        "relativePath": "Tokyo.Godfathers.mp4"
     }
 }
 
